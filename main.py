@@ -93,51 +93,47 @@ def main():
     y_width = 5
     x_offset, y_offset = (0,0)
 
-    colors = []
-    for i in range(6):
-        colors.append(random_color())
+    clock = pygame.time.Clock()
 
     while not done:
+
+        dt = clock.tick(144)
+
+        keys = pygame.key.get_pressed()
+        if keys[43]:
+            x_width -= 0.003*dt*x_width
+            y_width -= 0.003*dt*y_width
+        if keys[45]:
+            x_width += 0.003*dt*x_width
+            y_width += 0.003*dt*y_width
+        if keys[pygame.K_w]:
+            y_offset += 0.004*dt*y_width
+        if keys[pygame.K_s]:
+            y_offset -= 0.004*dt*y_width
+        if keys[pygame.K_d]:
+            x_offset += 0.004*dt*x_width
+        if keys[pygame.K_a]:
+            x_offset -= 0.004*dt*x_width
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 done = True
             
             if event.type == pygame.KEYDOWN:
-                if event.key == 43:
-                    x_width *= 0.8
-                    y_width *= 0.8
-                if event.key == 45:
-                    x_width *= 1.25
-                    y_width *= 1.25
-                if event.key == pygame.K_w:
-                    y_offset += y_width/10
-                if event.key == pygame.K_s:
-                    y_offset -= y_width/10
-                if event.key == pygame.K_d:
-                    x_offset += x_width/10
-                if event.key == pygame.K_a:
-                    x_offset -= x_width/10
                 if event.key == pygame.K_r:
                     x_width = 5
                     y_width = 5
                     x_offset, y_offset = (0,0)
+                if event.key == pygame.K_ESCAPE:
+                    done = True
 
 
 
-        screen.fill((255,255,255))
+        screen.fill((0,0,0))
 
         limits = (x_offset-x_width, x_offset + x_width, y_offset - y_width, y_offset + y_width)
-
-        plotline(screen, limits, lambda t: np.exp(t/2) * (2 - 2*t/3))
-        
-        c = -0.3
-        for color in colors:
-            plotline(screen, limits, lambda x: c*x**2,color, width = 2)
-            c+=0.1
-
-
-        draw_axislines(screen, limits, color = (0,0,0))        
+        plotline(screen, limits, lambda t: np.exp(t/2) * (2 - 2*t/3), width = 2)
+        draw_axislines(screen, limits)        
         
 
         pygame.display.flip()

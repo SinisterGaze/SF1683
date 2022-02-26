@@ -4,17 +4,19 @@ import pygame
 pygame.init()
 
 # Set up the drawing window
-WIDTH, HEIGHT = 800, 600
+WIDTH, HEIGHT = 800, 800
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 
 
 def map(value, from_range, to_range):
     old_w = from_range[1]-from_range[0]
     new_w = to_range[1]-to_range[0]
+    try:
+        return to_range[0] + (new_w/old_w)*(value-from_range[0])
+    except ZeroDivisionError:
+        return to_range[0]
 
-    return to_range[0] + (new_w/old_w)*(value-from_range[0])
-
-def plotline(surface, limits, function, color = (0,0,255), width = 1):
+def plotf(surface, limits, function, color=(0, 0, 255), width=1):
     xlim = limits[:2]
     ylim = limits[2:4]
 
@@ -24,25 +26,54 @@ def plotline(surface, limits, function, color = (0,0,255), width = 1):
     x1 = xlim[0]
     y1 = function(x1)
     for i in range(WIDTH-1):
-        x2 = xlim[0] + (i+1)*xlen/WIDTH 
-        y2 = function(x2)
-        
-        start_pos = (map(x1, xlim, (0, WIDTH)), HEIGHT - map(y1, ylim, (0, HEIGHT)))
-        end_pos = (map(x2, xlim, (0, WIDTH)), HEIGHT - map(y2, ylim, (0, HEIGHT)))
+        x2 = xlim[0] + (i+1)*xlen/WIDTH
+
+        try:
+            y2 = function(x2)
+        except ZeroDivisionError:
+            continue
+
+        start_pos = (map(x1, xlim, (0, WIDTH)),
+                     HEIGHT - map(y1, ylim, (0, HEIGHT)))
+        end_pos = (map(x2, xlim, (0, WIDTH)),
+                   HEIGHT - map(y2, ylim, (0, HEIGHT)))
 
         pygame.draw.line(surface, color, start_pos, end_pos, width)
 
         x1 = x2
         y1 = y2
 
+def plotfimplicit(surface, limits, function, color=(0, 0, 255), width=1):
+    xlim = limits[:2]
+    ylim = limits[2:4]
+
+    prevx = xlim[0]-1
+    prevy = ylim[0]-1
+
+    for scr_x in range(WIDTH):
+        for scr_y in range(HEIGHT):
+            x = map(scr_x, (0, WIDTH), xlim)
+            y = map(scr_y, (HEIGHT, 0), ylim)
+
+            if abs(function(x,y)) < 1e-2:
+                if prevx>=xlim[0] and prevy >= ylim[0]:
+                    start_pos = (scr_x, scr_y)
+                    end_pos = (map(prevx, xlim, (0, WIDTH)), HEIGHT - map(prevy, ylim, (0, HEIGHT)))
+                    pygame.draw.line(screen, color, start_pos, end_pos, width = width)
+
+            prevx = x
+            prevy = y
+
 def h_intersect(x, m, b):
     return m*x+b
+
 
 def v_intersect(y, m, b):
     return (y-b)/m
 
-def draw_line(surface, limits, m, b, color = (255,0,0), width=1):
-    
+
+def line(surface, limits, m, b, color=(255, 0, 0), width=1):
+
     xlim = limits[0:2]
     ylim = limits[2:4]
 
@@ -51,7 +82,7 @@ def draw_line(surface, limits, m, b, color = (255,0,0), width=1):
             y = map(b, ylim,  HEIGHT-(0, HEIGHT))
             pygame.draw.line(surface, color, (0, y), (WIDTH, y))
     else:
-        
+
         intersects = []
 
         if ylim[0] <= h_intersect(xlim[0], m, b) <= ylim[1]:
@@ -66,35 +97,167 @@ def draw_line(surface, limits, m, b, color = (255,0,0), width=1):
         if xlim[0] <= v_intersect(ylim[1], m, b) <= xlim[1]:
             intersects.append((v_intersect(ylim[1], m, b), ylim[1]))
 
-        start_pos = intersects[0]
-        end_pos = intersects[1]
+        if len(intersects) >= 2:
+            start_pos = intersects[0]
+            end_pos = intersects[1]
 
-        start_pos = (map(start_pos[0], xlim, (0, WIDTH)), HEIGHT-map(start_pos[1], ylim, (0, HEIGHT)))
-        end_pos = (map(end_pos[0], xlim, (0, WIDTH)), HEIGHT-map(end_pos[1], ylim, (0, HEIGHT)))
+            start_pos = (map(start_pos[0], xlim, (0, WIDTH)),
+                         HEIGHT-map(start_pos[1], ylim, (0, HEIGHT)))
+            end_pos = (map(end_pos[0], xlim, (0, WIDTH)),
+                       HEIGHT-map(end_pos[1], ylim, (0, HEIGHT)))
 
-        pygame.draw.line(surface, color, start_pos, end_pos, width)
+            pygame.draw.line(surface, color, start_pos, end_pos, width)
 
-def draw_axislines(surface, limits, color = (255,255,255), width = 1):
-    y_xaxis = map(0, limits[2:4], (HEIGHT, 0))
-    x_yaxis = map(0, limits[:2], (0, WIDTH))
-    pygame.draw.line(surface, color, (0, y_xaxis), (WIDTH, y_xaxis), width)
-    pygame.draw.line(surface, color, (x_yaxis, 0), (x_yaxis, HEIGHT), width)
+
+def vline(surface, x, limits,  color=(255, 0, 0), width=1):
+    xlim = limits[:2]
+    ylim = limits[2:4]
+    start_pos = (map(x, xlim, (0, WIDTH)), 0)
+    end_pos = (map(x, xlim, (0, WIDTH)), HEIGHT)
+    pygame.draw.line(surface, color, start_pos, end_pos, width)
+
+
+def hline(surface, y, limits,  color=(255, 0, 0), width=1):
+    xlim = limits[:2]
+    ylim = limits[2:4]
+    start_pos = (0, HEIGHT-map(y, ylim, (0, HEIGHT)))
+    end_pos = (WIDTH, HEIGHT-map(y, ylim, (0, HEIGHT)))
+    pygame.draw.line(surface, color, start_pos, end_pos, width)
+
+
+def draw_axislines(surface, limits, color=(255, 255, 255), width=1):
+    hline(screen, 0, limits, color, width)
+    vline(screen, 0, limits, color, width)
 
 
 def random_color():
-    color = np.random.randint(0, high = 256, size=3)
+    color = np.random.randint(0, high=256, size=3)
     return color
 
-# Run until the user asks to quit
+def dir_field(surface, limits, function, size = 10, n = 30, color = (255,255,255), heatmap = False, scale = False):
+    xlim = limits[:2]
+    ylim = limits[2:4]
+    scl_x = WIDTH/n
+    scl_y = HEIGHT/n
+
+    size_range = (size/3, size*3)
+
+    valrange = [np.inf, np.NINF]
+    abs_valrange = [np.inf, 0]
+
+    if heatmap or scale:
+        for i in range(n):
+            for j in range(n):
+                scr_x = scl_x*(i+0.5)
+                scr_y = scl_y*(j+0.5)
+
+                x = map(scr_x, (0, WIDTH), xlim)
+                y = map(HEIGHT - scr_y, (0, HEIGHT), ylim)
+
+                ydot = function(x,y)
+                absydot = abs(ydot)
+
+                valrange[0] = ydot if ydot < valrange[0] else valrange[0]
+                valrange[1] = ydot if ydot > valrange[1] else valrange[1]
+
+                abs_valrange[0] = absydot if absydot < abs_valrange[0] else abs_valrange[0]
+                abs_valrange[1] = absydot if absydot > abs_valrange[1] else abs_valrange[1]
+
+    for i in range(n):
+        for j in range(n):
+            scr_x = scl_x*(i+0.5)
+            scr_y = scl_y*(j+0.5)
+
+            x = map(scr_x, (0,WIDTH), xlim)
+            y = map(HEIGHT - scr_y, (0, HEIGHT), ylim)
+
+            ydot = function(x,y)
+            den = 1/np.sqrt(1+ydot*ydot)
+
+            if scale:
+                size = map(abs(ydot), abs_valrange, size_range)
+
+            dx = size*den
+            dy = dx*ydot
+
+            start_pos = (scr_x, scr_y)
+            end_pos = (scr_x + dx, scr_y - dy)
+
+            c = color
+
+            if heatmap:
+                if abs(valrange[1]-valrange[0]) > 0:
+                    c = map(ydot, valrange, (0,1))
+                    color = (255*c, 0, 255 * (1-c))
+
+
+            pygame.draw.line(surface, color, start_pos, end_pos, width = 1)
+
+def plotint(surface, int_lim, limits, function, color=(0,255,0)):
+
+    a, b = int_lim
+
+    xlim = limits[:2]
+    ylim = limits[2:4]
+
+    x = map(0, (0, WIDTH), xlim)
+    try:
+        y = function(x)
+    except ZeroDivisionError:
+        y = 0
+
+    a = max(int(np.floor(map(a, xlim, (0, WIDTH)))), 0)
+    b = min(int(np.ceil(map(b, xlim, (0, WIDTH)))), WIDTH)
+    for i in range(a,b):
+        x = map(i, (0, WIDTH), xlim)
+        try:
+            y = function(x)
+        except ZeroDivisionError:
+            y = y
+
+        start_pos = (i,
+                     HEIGHT - map(0, ylim, (0, HEIGHT)))
+        end_pos = (i,
+                   HEIGHT - map(y, ylim, (0, HEIGHT)))
+
+        pygame.draw.line(surface, color, start_pos, end_pos, width = 1)
+
+
+
 def main():
 
+
+    def f(x,t):
+        c = 1
+        if (np.abs(x-c*t) <= np.pi/2):
+            return 0.5*np.power(np.cos(x-c*t), 2)
+        else:
+            return 0
+
+    def fsps(x,t):
+        c = 1
+        return f(x,t) + f(x,-t)
+
+    def ydot(x,y):
+        try:
+            r = 5
+            if x**2 + (y-r)**2 <= r**2:
+                return np.sqrt(x**2 + y**2)*(-x/y)
+            else:
+                return 0
+        except ZeroDivisionError:
+            return 0
+
+
+    x_width = 2*np.pi
+    y_width = 2
+    x_offset, y_offset = (0, 0)
+    startvalues = (x_width, y_width, x_offset, y_offset)
+
     done = False
-    x_width = 5
-    y_width = 5
-    x_offset, y_offset = (0,0)
-
     clock = pygame.time.Clock()
-
+    
+    t = -5
     while not done:
 
         dt = clock.tick(144)
@@ -118,28 +281,28 @@ def main():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 done = True
-            
+
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_r:
-                    x_width = 5
-                    y_width = 5
-                    x_offset, y_offset = (0,0)
+                    x_width, y_width, x_offset, y_offset = startvalues
                 if event.key == pygame.K_ESCAPE:
                     done = True
 
-
-
         screen.fill((0,0,0))
 
-        limits = (x_offset-x_width, x_offset + x_width, y_offset - y_width, y_offset + y_width)
-        plotline(screen, limits, lambda t: np.exp(t/2) * (2 - 2*t/3), width = 2)
-        draw_axislines(screen, limits)        
-        
+        limits = (x_offset-x_width, x_offset + x_width,
+                  y_offset - y_width, y_offset + y_width)
+    
+        t = t + 0.002*dt
+        plotf(screen, limits, lambda x:f(x,t), color = (100,100,255))
+        plotf(screen, limits, lambda x:f(x,-t), color = (100,100,255))
+        plotf(screen, limits, lambda x:fsps(x,t/5))
+        draw_axislines(screen, limits)
 
         pygame.display.flip()
 
-   
     pygame.quit()
+
 
 if __name__ == "__main__":
     main()

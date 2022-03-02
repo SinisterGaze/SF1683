@@ -226,6 +226,20 @@ def plotint(surface, int_lim, limits, function, color=(0,255,0)):
 
 def main():
 
+    def v_coeff(k, t):
+        kp = k * np.pi
+        factor = 2 * (-1) ** k 
+        result = (1/kp + 1/(kp**2-1)) * np.exp(-t*kp**2) + (1/(1-kp**2))*np.exp(-t)
+        return factor*result 
+        
+    def v(x, t, N):
+        result = 0
+        for k in range(1,N+1):
+            result += v_coeff(k, t) * np.sin(k*np.pi*x)
+        return result
+    
+    def u(x,t, N):
+        return v(x, t, N) + x*np.exp(-t)
 
     def f(x,t):
         c = 1
@@ -249,15 +263,15 @@ def main():
             return 0
 
 
-    x_width = 2*np.pi
-    y_width = 2
+    x_width = 1
+    y_width = 1
     x_offset, y_offset = (0, 0)
     startvalues = (x_width, y_width, x_offset, y_offset)
 
     done = False
     clock = pygame.time.Clock()
     
-    t = -5
+    t = 0
     while not done:
 
         dt = clock.tick(144)
@@ -293,10 +307,17 @@ def main():
         limits = (x_offset-x_width, x_offset + x_width,
                   y_offset - y_width, y_offset + y_width)
     
-        t = t + 0.002*dt
-        plotf(screen, limits, lambda x:f(x,t), color = (100,100,255))
-        plotf(screen, limits, lambda x:f(x,-t), color = (100,100,255))
-        plotf(screen, limits, lambda x:fsps(x,t/5))
+        t = t + 0.0001*dt
+        # Endimensionell värmeledning (Fourierserie)
+        plotf(screen, limits, lambda x:u(x,t,3),color = (255,0,0), width = 2)
+        #plotf(screen, limits, lambda x:u(x,t,10),color = (255,0,0), width = 2)
+        #plotint(screen, (0,1), limits, lambda x:np.abs(u(x,t,4)-u(x,t,10)))
+        #plotf(screen, limits, lambda x:u(x,t), width = 2)
+        
+        #Vågkollision
+        #plotf(screen, limits, lambda x:f(x,t), color = (100,100,255))
+        #plotf(screen, limits, lambda x:f(x,-t), color = (100,100,255))
+        #plotf(screen, limits, lambda x:fsps(x,t/5))
         draw_axislines(screen, limits)
 
         pygame.display.flip()
